@@ -4,11 +4,11 @@ import { Store } from "@tauri-apps/plugin-store";
 const store = new Store("settings.json");
 
 export default function SettingsApp() {
-  const [activeProvider, setActiveProvider] = useState("gemini");
+  const [activeProvider, setActiveProvider] = useState("openrouter");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [openRouterApiKey, setOpenRouterApiKey] = useState("");
   const [zenmuxApiKey, setZenmuxApiKey] = useState("");
-  const [model, setModel] = useState("gemini-1.5-flash");
+  const [model, setModel] = useState("moonshotai/kimi-k2.5");
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -57,6 +57,7 @@ export default function SettingsApp() {
             <option value="gemini">Gemini Vertex/AI Studio</option>
             <option value="openrouter">OpenRouter</option>
             <option value="zenmux">Zenmux</option>
+            <option value="z.ai-code">Z.ai Code Plan</option>
           </select>
         </div>
 
@@ -83,12 +84,12 @@ export default function SettingsApp() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <label>Zenmux API Key:</label>
+          <label>Zenmux / Z.ai API Key:</label>
           <input
             type="password"
             value={zenmuxApiKey}
             onChange={(e) => setZenmuxApiKey(e.target.value)}
-            placeholder="Zenmux Key"
+            placeholder="Zenmux / Z.ai Key"
             style={{ padding: "8px", borderRadius: "4px", background: "#333", color: "#fff", border: "1px solid #555" }}
           />
         </div>
@@ -99,7 +100,7 @@ export default function SettingsApp() {
             type="text"
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            placeholder="e.g. gemini-1.5-flash, gpt-4o, zenmux/z-ai/glm-4.6v"
+            placeholder="e.g. moonshotai/kimi-k2.5, glm-4.7"
             style={{ padding: "8px", borderRadius: "4px", background: "#333", color: "#fff", border: "1px solid #555" }}
           />
           <small style={{ color: "#aaa", marginTop: "4px" }}>

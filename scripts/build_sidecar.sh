@@ -8,7 +8,7 @@ cd python-backend
 uv sync
 
 # Build the binary
-uv run pyinstaller --clean --noconfirm --name python-backend --onefile src/main.py
+uv run pyinstaller --noconfirm --name python-backend --onefile src/main.py
 
 # Move to Tauri binaries folder
 mkdir -p ../src-tauri/binaries

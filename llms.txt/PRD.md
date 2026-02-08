@@ -2,65 +2,52 @@
 
 ## Project Overview
 - **Name:** MAIssistant
-- **Version:** 0.2.0
-- **Description:** A desktop AI assistant that integrates multiple LLM providers (Gemini Vertex, OpenRouter, Zenmux) and provides visual context awareness through screen capture capabilities.
-- **Purpose:** To allow users to get AI insights about their current screen content (specific windows or monitors) using their preferred AI models.
+- **Version:** 0.3.0
+- **Description:** A desktop AI assistant that integrates multiple LLM providers (OpenRouter, Zenmux, Z.ai) with robust fallback mechanisms, local TTS, and visual context awareness.
+- **Purpose:** To provide a resilient, multi-modal AI assistant that "sees" your screen and "speaks" with low latency.
 
 ## Core Features
 
-### 1. Multi-Model Architecture
+### 1. Multi-Model Architecture & Resilience
 - **Providers:**
-  - **Gemini Vertex API:** Direct integration with Google's Vertex AI models.
-  - **OpenRouter:** Access to a wide range of models via OpenRouter API.
-  - **Zenmux:** Integration with Zenmux platform for enterprise/aggregated models.
-- **User Configuration:**
-  - Users must be able to input and save API keys for each provider.
-  - Users can select the active provider and specific model from a dropdown.
+  - **OpenRouter & Zenmux:** Primary providers using **Kimi 2.5** (`moonshotai/kimi-k2.5`) for cost-effective multi-modal reasoning.
+  - **Z.ai:** Secondary/Fallback provider using **GLM 4.7** (`glm-4.7`).
+- **Fallback Logic:**
+  - If the primary provider (OpenRouter/Zenmux) fails (network, rate limit, routing), the system automatically retries with Z.ai GLM 4.7.
+  - Frontend automatically handles credential passing for both primary and fallback providers.
 
-### 2. Visual Context & Screen Capture
-- **Source Selection:**
-  - Users can list available monitors and open application windows.
-  - Users can select a specific source (Monitor 1, Chrome Window, etc.) to "watch" or capture on demand.
-- **Capture Mechanism:**
-  - On-demand capture when a query is sent.
-  - Images are processed and sent to the multimodal LLM.
+### 2. Local Text-to-Speech (TTS)
+- **Engine:** **PocketTTS** (Hugging Face).
+- **Voice:** Default `alba-mackenna/casual` (configurable in code).
+- **Performance:** Local CPU/GPU inference for privacy and low latency.
 
-### 3. User Interface
-- **Chat Interface:** Standard chat UI for Q&A.
-- **Settings Panel:**
-  - API Key management.
-  - Model selection.
-- **Capture Controls:**
-  - Source selector (Window/Monitor).
-  - Preview of captured content (optional/thumbnail).
+### 3. Visual Context & Screen Capture
+- **Source Selection:** List and select specific windows or monitors.
+- **Capture:** On-demand screenshot capture sent as Base64 to multi-modal models.
+
+### 4. Memory & Session Management
+- **Multi-Chat:** Support for multiple concurrent chat sessions.
+- **Isolation:** Each chat session has its own dedicated SQLite database (`data/sessions/{id}.db`) for strict memory separation using Agno.
 
 ## Technical Architecture
 
 ### Frontend (React + TypeScript)
-- Manages UI state, user inputs, and settings.
-- Communicates with Rust backend for system operations (window listing, capturing).
-- Communicates with Python backend for AI inference.
+- **State Management:** Manages chat history, capturing state, and settings.
+- **Settings:** Configures API keys for OpenRouter, Zenmux, and Z.ai.
+- **Audio:** Plays Base64 audio returned from backend.
 
 ### Backend (Python - FastAPI)
-- Acts as the AI Orchestrator.
-- **Modules:**
-  - `model_manager`: Handles initialization and calls to Gemini, OpenRouter, Zenmux.
-  - `processing`: Handles image encoding/decoding.
-  - `api`: FastAPI endpoints for chat and configuration.
-- **Storage:** API keys should be stored securely (or passed per request from the secure frontend/Rust storage). *Decision: Pass keys from frontend for now to keep backend stateless regarding secrets, or store in `.env` managed by frontend.* -> *Refined: Frontend stores keys in Tauri Store (local disk encrypted/secure) and sends them with requests.*
+- **Agent Brain:** 
+  - Manages Agno agents.
+  - Handles dynamic DB creation per session.
+  - Executes fallback logic (Primary -> Fallback).
+- **TTS Manager:** Wraps PocketTTS for speech generation.
+- **API:** Exposes `/chat` (text/image) and `/speak` (TTS) endpoints.
 
 ### System Layer (Rust - Tauri)
-- **Capabilities:**
-  - `list_windows()`: Returns list of open windows.
-  - `list_monitors()`: Returns list of monitors.
-  - `capture_screen(source_id)`: Captures screenshot and returns Base64 string.
+- **Window/Screen Management:** Lists sources and captures screenshots.
+- **Persistence:** Securely stores settings and API keys.
 
 ## Data Flow
-1. User configures API Keys in Settings.
-2. User selects "Chrome" as capture source.
-3. User asks "What is on this page?".
-4. Frontend calls Rust -> `capture_screen("Chrome_ID")`.
-5. Rust returns Base64 Image.
-6. Frontend calls Python -> `/chat` with `{ message: "...", image: "base64...", provider: "...", api_key: "..." }`.
-7. Python `model_manager` selects provider, formats payload, calls external API.
-8. Response is returned to Frontend and displayed.
+1. **Chat:** User sends message -> Frontend includes Primary Key + Fallback Key -> Backend tries Primary Model -> If Fail, Backend uses Fallback Key & Model -> Response returned.
+2. **TTS:** User clicks "Speak" -> Backend generates Audio (PocketTTS) -> Base64 Audio returned -> Frontend plays Blob.
